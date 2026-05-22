@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>VyaparLens | Merchant Login</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/animations.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/responsive.css') }}">
+</head>
+<body class="auth-body">
+  <section class="auth-shell">
+    <div class="auth-story glass-card">
+      <div class="auth-brand-row">
+        <img class="auth-logo" src="{{ url_for('static', filename='assets/logo.svg') }}" alt="VyaparLens">
+        <div>
+          <p class="eyebrow">Merchant OS</p>
+          <strong>VyaparLens</strong>
+        </div>
+      </div>
+      <h1>Billing, stock and profit in one clean workspace.</h1>
+      <p class="tagline">Smart Billing, Inventory & Profit Tracking for Clothing Stores</p>
+      <div class="benefit-grid">
+        <span>Billing</span>
+        <span>Inventory</span>
+        <span>Udhar</span>
+        <span>Profit Analytics</span>
+      </div>
+      <div class="demo-box">
+        <strong>Demo login</strong>
+        <p>guru@example.com / 123456</p>
+      </div>
+    </div>
+
+    <div class="auth-card">
+      <div class="section-head">
+        <div>
+          <h2>Welcome to VyaparLens</h2>
+          <p>Login or create a merchant account.</p>
+        </div>
+      </div>
+      <div class="tab-switch">
+        <button class="active" type="button" data-auth-tab="login">Login</button>
+        <button type="button" data-auth-tab="signup">Create Account</button>
+      </div>
+
+      <form class="auth-form active" id="loginForm" method="post" action="{{ url_for('auth.login') }}">
+        <label>Email or mobile
+          <input name="identifier" required placeholder="guru@example.com">
+        </label>
+        <label>Password
+          <input name="password" type="password" required placeholder="123456">
+        </label>
+        <button class="btn btn-primary full" type="submit">Login</button>
+      </form>
+
+      <form class="auth-form" id="signupForm" method="post" action="{{ url_for('auth.signup') }}">
+        <div class="form-grid two">
+          <label>Merchant name
+            <input name="name" required>
+          </label>
+          <label>Shop name
+            <input name="shop_name" required>
+          </label>
+        </div>
+        <div class="form-grid two">
+          <label>Mobile number
+            <input name="mobile" required>
+          </label>
+          <label>Email
+            <input name="email" type="email" required>
+          </label>
+        </div>
+        <label>Password
+          <input name="password" type="password" minlength="6" required>
+        </label>
+        <label>Shop address
+          <textarea name="shop_address" rows="3" required></textarea>
+        </label>
+        <button class="btn btn-primary full" type="submit">Create Account</button>
+      </form>
+    </div>
+  </section>
+
+  <div class="toast-wrap" id="toastWrap">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% for category, message in messages %}
+        <div class="toast {{ category }}">{{ message }}</div>
+      {% endfor %}
+    {% endwith %}
+  </div>
+
+  <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/auth.js') }}"></script>
+</body>
+</html>

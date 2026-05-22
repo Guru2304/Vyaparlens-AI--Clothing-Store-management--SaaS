@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="page-hero">
+  <div>
+    <p class="eyebrow">Configuration</p>
+    <h2>Settings</h2>
+    <p>Keep merchant profile, shop details and receipt text accurate.</p>
+  </div>
+</section>
+
+<section class="panel narrow">
+  <form method="post" class="form-stack">
+    <div class="section-head">
+      <div>
+        <h2>Merchant Profile</h2>
+        <p>Name, mobile and login email.</p>
+      </div>
+    </div>
+    <div class="form-grid two">
+      <label>Merchant name
+        <input name="name" value="{{ merchant.name }}" required>
+      </label>
+      <label>Shop name
+        <input name="shop_name" value="{{ merchant.shop_name }}" required>
+      </label>
+    </div>
+    <div class="form-grid two">
+      <label>Mobile
+        <input name="mobile" value="{{ merchant.mobile }}" required>
+      </label>
+      <label>Email
+        <input name="email" type="email" value="{{ merchant.email }}" required>
+      </label>
+    </div>
+
+    <div class="section-head">
+      <div>
+        <h2>Shop Details</h2>
+        <p>Printed on receipts and used across the app.</p>
+      </div>
+    </div>
+    <label>Shop address
+      <textarea name="shop_address" rows="3" required>{{ merchant.shop_address }}</textarea>
+    </label>
+    <label>GST number
+      <input name="gst_number" value="{{ merchant.gst_number or '' }}" placeholder="Optional">
+    </label>
+
+    <div class="section-head">
+      <div>
+        <h2>Receipt Settings</h2>
+        <p>Short customer-facing footer message.</p>
+      </div>
+    </div>
+    <label>Receipt footer message
+      <textarea name="receipt_footer" rows="3">{{ merchant.receipt_footer }}</textarea>
+    </label>
+    <button class="btn btn-primary" type="submit">Save Settings</button>
+  </form>
+</section>
+{% endblock %}

@@ -1,0 +1,128 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="page-hero">
+  <div>
+    <p class="eyebrow">Analytics</p>
+    <h2>Reports dashboard</h2>
+    <p>Sales, profit, payments, products and udhar insights.</p>
+  </div>
+  <div class="hero-actions">
+    <a class="btn btn-primary" href="{{ url_for('billing.billing') }}">Create Bill</a>
+    <a class="btn btn-secondary" href="{{ url_for('inventory.inventory') }}">Inventory</a>
+  </div>
+</section>
+
+<div class="report-tabs">
+  <span class="badge-primary">Sales</span>
+  <span class="badge-success">Profit</span>
+  <span class="badge-primary">Payments</span>
+  <span class="badge-muted">Products</span>
+  <span class="badge-warning">Udhar</span>
+</div>
+
+<section class="stats-grid compact-grid">
+  <article class="stat-card primary"><span class="stat-dot">S</span><p>Gross Sales</p><h2 class="stat-value currency-value">{{ gross_sales|money }}</h2><small>All-time sales</small></article>
+  <article class="stat-card success"><span class="stat-dot">P</span><p>Gross Profit</p><h2 class="stat-value currency-value">{{ gross_profit|money }}</h2><small>After product cost</small></article>
+  <article class="stat-card primary"><span class="stat-dot">M</span><p>Average Margin</p><h2>{{ '%.1f'|format(average_margin) }}%</h2><small>Gross profit / sales</small></article>
+  <article class="stat-card warning"><span class="stat-dot">B</span><p>Total Bills</p><h2>{{ total_bills }}</h2><small>Invoices created</small></article>
+  <article class="stat-card danger"><span class="stat-dot">U</span><p>Udhar Pending</p><h2 class="stat-value currency-value">{{ pending_udhar|money }}</h2><small>Customer credit</small></article>
+  <article class="stat-card accent"><span class="stat-dot">I</span><p>Inventory Value</p><h2 class="stat-value currency-value">{{ inventory_value|money }}</h2><small>Buying cost of stock</small></article>
+</section>
+
+<section class="reports-grid">
+  <article class="panel chart-panel">
+    <div class="section-head"><h2>Daily Sales</h2></div>
+    <canvas id="salesChart"></canvas>
+  </article>
+  <article class="panel chart-panel">
+    <div class="section-head"><h2>Daily Profit</h2></div>
+    <canvas id="profitChart"></canvas>
+  </article>
+  <article class="panel chart-panel">
+    <div class="section-head"><h2>Payment Mode Summary</h2></div>
+    <canvas id="paymentChart"></canvas>
+  </article>
+  <article class="panel chart-panel">
+    <div class="section-head"><h2>Top Products</h2></div>
+    <canvas id="topProductsChart"></canvas>
+  </article>
+  <article class="panel chart-panel">
+    <div class="section-head"><h2>Category Sales</h2></div>
+    <canvas id="categoryChart"></canvas>
+  </article>
+</section>
+
+<section class="dashboard-grid">
+  <article class="panel">
+    <div class="section-head"><h2>Top Selling Products</h2></div>
+    {% if top_products %}
+      <div class="stack-list">
+        {% for row in top_products %}
+          <div class="list-row"><span>{{ display_product_name(row.brand_name, row.product_name) }}</span><strong>{{ row.sold_qty }} sold</strong></div>
+        {% endfor %}
+      </div>
+    {% else %}<div class="empty-state">No reports data yet.</div>{% endif %}
+  </article>
+  <article class="panel">
+    <div class="section-head"><h2>Best Variants</h2></div>
+    {% if best_variants %}
+      <div class="stack-list">
+        {% for row in best_variants %}
+          <div class="list-row"><span>{{ display_product_name(row.brand_name, row.product_name) }} {{ row.colour }} / {{ row.size }}</span><strong>{{ row.sold_qty }}</strong></div>
+        {% endfor %}
+      </div>
+    {% else %}<div class="empty-state">No variant sales yet.</div>{% endif %}
+  </article>
+  <article class="panel">
+    <div class="section-head"><h2>Highest Profit</h2></div>
+    {% if highest_profit %}
+      <div class="stack-list">
+        {% for row in highest_profit %}
+          <div class="list-row"><span>{{ display_product_name(row.brand_name, row.product_name) }}</span><strong>{{ row.profit|money }}</strong></div>
+        {% endfor %}
+      </div>
+    {% else %}<div class="empty-state">No profit data yet.</div>{% endif %}
+  </article>
+  <article class="panel">
+    <div class="section-head"><h2>Highest Margin</h2></div>
+    {% if highest_margin %}
+      <div class="stack-list">
+        {% for row in highest_margin %}
+          <div class="list-row"><span>{{ display_product_name(row.brand_name, row.product_name) }}</span><strong>{{ '%.1f'|format(row.margin) }}%</strong></div>
+        {% endfor %}
+      </div>
+    {% else %}<div class="empty-state">No margin data yet.</div>{% endif %}
+  </article>
+  <article class="panel">
+    <div class="section-head"><h2>Low Stock Items</h2></div>
+    {% if low_stock %}
+      <div class="stack-list">
+        {% for variant, product in low_stock %}
+          <div class="list-row"><span>{{ display_product_name(product.brand_name, product.product_name) }} {{ variant.colour }} / {{ variant.size }}</span><strong>{{ variant.quantity }}</strong></div>
+        {% endfor %}
+      </div>
+    {% else %}<div class="empty-state">No low stock items.</div>{% endif %}
+  </article>
+  <article class="panel">
+    <div class="section-head"><h2>Slow Moving Stock</h2></div>
+    {% if slow_stock %}
+      <div class="stack-list">
+        {% for variant, product in slow_stock %}
+          <div class="list-row"><span>{{ display_product_name(product.brand_name, product.product_name) }} {{ variant.colour }} / {{ variant.size }}</span><strong>{{ variant.quantity }} left</strong></div>
+        {% endfor %}
+      </div>
+    {% else %}<div class="empty-state">No slow-moving stock detected.</div>{% endif %}
+  </article>
+</section>
+
+<script type="application/json" id="dailySeries">{{ daily_series|safe }}</script>
+<script type="application/json" id="paymentChartData">{{ payment_chart|safe }}</script>
+<script type="application/json" id="topProductChartData">{{ top_product_chart|safe }}</script>
+<script type="application/json" id="categoryChartData">{{ category_chart|safe }}</script>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="{{ url_for('static', filename='js/reports.js') }}"></script>
+{% endblock %}

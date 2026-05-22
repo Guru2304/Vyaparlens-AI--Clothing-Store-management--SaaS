@@ -1,0 +1,228 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="page-hero">
+  <div>
+    <p class="eyebrow">Fast checkout</p>
+    <h2>Create a bill in seconds</h2>
+    <p>Pick variant, review cart, apply discount and collect payment.</p>
+  </div>
+  <div class="hero-actions">
+    <a class="btn btn-ghost" href="{{ url_for('inventory.inventory') }}">Inventory</a>
+    <a class="btn btn-secondary" href="{{ url_for('udhar.udhar') }}">Udhar</a>
+  </div>
+</section>
+
+<section class="billing-layout premium-billing">
+  <div class="billing-left">
+    <article class="panel billing-builder">
+      <div class="section-head">
+        <div>
+          <h2>Create Bill</h2>
+          <p>Fast product search, variant selection and cart building.</p>
+        </div>
+      </div>
+
+      <div class="form-stack">
+        <label>Search product
+          <input id="productSearch" placeholder="Type brand, product, category or SKU">
+        </label>
+        <div class="form-grid two">
+          <label>Product
+            <select id="productSelect"></select>
+          </label>
+          <label>Colour
+            <select id="colourSelect"></select>
+          </label>
+        </div>
+        <div class="form-grid three">
+          <label>Size
+            <select id="sizeSelect"></select>
+          </label>
+          <label>Available stock
+            <input id="availableStock" readonly>
+          </label>
+          <label>Default price
+            <input id="itemPrice" type="number" min="0" step="0.01" readonly>
+          </label>
+        </div>
+        <div class="form-grid two">
+          <label>Quantity
+            <input id="itemQty" type="number" min="1" value="1">
+          </label>
+          <label>Discount Mode
+            <select id="itemDiscountType">
+              <option value="none">No Discount</option>
+              <option value="flat">Flat &#8377;</option>
+              <option value="percent">Percentage %</option>
+              <option value="custom_price">Custom Final Price</option>
+            </select>
+          </label>
+        </div>
+
+        <div class="item-discount-panel">
+          <div class="form-grid two">
+            <label id="itemDiscountValueWrap">Discount value
+              <input id="itemDiscountValue" type="number" min="0" step="0.01" value="0">
+            </label>
+            <label id="customFinalPriceWrap" class="hidden">Final price per item
+              <input id="customFinalPrice" type="number" min="0" step="0.01">
+            </label>
+          </div>
+          <div class="item-price-preview">
+            <span>Default Unit <strong id="previewDefaultUnit">₹0.00</strong></span>
+            <span>Final Unit <strong id="previewFinalUnit">₹0.00</strong></span>
+            <span>Discount / Item <strong id="previewDiscountUnit">₹0.00</strong></span>
+            <span>Line Total <strong id="previewLineTotal">₹0.00</strong></span>
+          </div>
+          <div class="form-error hidden" id="itemPricingError"></div>
+          <div class="price-warning hidden" id="itemPricingWarning"></div>
+        </div>
+
+        <div class="form-grid two action-grid">
+          <div class="form-help">Custom final price becomes the actual sale price. Any difference from default price is treated as discount, not pending.</div>
+          <button class="btn btn-primary align-end" type="button" id="addCartItem">Add Item</button>
+        </div>
+      </div>
+    </article>
+
+    <article class="panel cart-panel">
+      <div class="section-head">
+        <div>
+          <h2>Billing Cart</h2>
+          <p>Update quantity before generating the bill.</p>
+        </div>
+        <button class="btn btn-secondary compact" type="button" id="clearCart">Clear Cart</button>
+      </div>
+      <div class="table-wrap cart-table-wrap">
+        <table class="cart-table">
+          <thead>
+            <tr><th>Item</th><th>Qty</th><th>Default</th><th>Discount</th><th>Final</th><th>Line Total</th><th></th></tr>
+          </thead>
+          <tbody id="cartBody">
+            <tr><td colspan="7" class="empty-table">No items added.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </article>
+  </div>
+
+  <aside class="billing-right">
+    <article class="panel payment-panel billing-summary">
+      <div class="section-head">
+        <div>
+          <h2>Payment Summary</h2>
+          <p>Discount and collection are recalculated live.</p>
+        </div>
+      </div>
+
+      <form method="post" action="{{ url_for('billing.create_bill') }}" id="billingForm" class="form-stack payment-form">
+        <input type="hidden" name="cart_data" id="cartData">
+
+        <div class="summary-card">
+          <div class="summary-row"><span>Subtotal</span><strong id="subtotalAmount">Rs. 0.00</strong></div>
+          <div class="summary-row"><span>Item Discount</span><strong id="discountAmount">Rs. 0.00</strong></div>
+          <div class="summary-row total"><span>Total Amount</span><strong id="billTotal">Rs. 0.00</strong></div>
+        </div>
+
+        <div class="form-grid two">
+          <label>Payment Mode
+            <select name="payment_mode" id="paymentMode">
+              <option>Cash</option>
+              <option>UPI</option>
+              <option>Card</option>
+              <option>Mixed</option>
+              <option value="Udhar">Udhar / Credit</option>
+              <option>Partial Payment</option>
+            </select>
+          </label>
+          <label>Amount Paid
+            <input name="paid_amount" id="paidAmount" type="number" min="0" step="0.01">
+          </label>
+        </div>
+
+        <div class="form-grid three hidden" id="mixedFields">
+          <label>Cash amount
+            <input name="mixed_cash_amount" type="number" min="0" step="0.01" value="0">
+          </label>
+          <label>UPI amount
+            <input name="mixed_upi_amount" type="number" min="0" step="0.01" value="0">
+          </label>
+          <label>Card amount
+            <input name="mixed_card_amount" type="number" min="0" step="0.01" value="0">
+          </label>
+        </div>
+
+        <div class="summary-card compact-summary">
+          <div class="summary-row"><span>Paid</span><strong id="paidSummary">Rs. 0.00</strong></div>
+          <div class="summary-row pending"><span>Pending</span><strong id="pendingAmount">Rs. 0.00</strong></div>
+        </div>
+
+        <div class="customer-box hidden" id="customerBox">
+          <div class="section-head small"><h3>Udhar Customer</h3></div>
+          <label>Select existing customer
+            <select name="customer_id">
+              <option value="">New customer</option>
+              {% for customer in customers %}
+                <option value="{{ customer.id }}">{{ customer.name }} - {{ customer.mobile }} (Pending {{ customer.pending_amount|money }})</option>
+              {% endfor %}
+            </select>
+          </label>
+          <div class="form-grid two">
+            <label>Customer Name
+              <input name="customer_name" id="customerName">
+            </label>
+            <label>Mobile Number
+              <input name="customer_mobile" id="customerMobile">
+            </label>
+          </div>
+          <label>Address
+            <textarea name="customer_address" rows="2"></textarea>
+          </label>
+        </div>
+
+        <div class="billing-actions">
+          <button type="submit" id="generateBillBtn" class="btn btn-primary btn-lg generate-bill-btn" disabled>
+            Add items to generate bill
+          </button>
+          <button type="button" id="clearCartBtn" class="btn btn-secondary">
+            Clear Cart
+          </button>
+        </div>
+      </form>
+    </article>
+
+    <article class="receipt-preview-card">
+      <div class="section-head small">
+        <h3>Receipt Preview</h3>
+      </div>
+      <div class="receipt-paper mini" id="receiptPreview">
+        <div class="receipt-center">
+          <h2>{{ merchant.shop_name|upper }}</h2>
+          <p>{{ merchant.shop_address }}</p>
+        </div>
+        <div class="receipt-line">
+          <span>INV-PREVIEW</span>
+          <span>Today</span>
+        </div>
+        <hr>
+        <div id="previewItems" class="preview-items">
+          <p class="muted center-text">Cart items will appear here.</p>
+        </div>
+        <hr>
+        <div class="receipt-line"><span>Subtotal</span><span id="previewSubtotal">Rs. 0.00</span></div>
+        <div class="receipt-line"><span>Discount</span><span id="previewDiscount">Rs. 0.00</span></div>
+        <div class="receipt-line total"><span>Total</span><strong id="previewTotal">Rs. 0.00</strong></div>
+        <div class="receipt-line"><span>Paid</span><span id="previewPaid">Rs. 0.00</span></div>
+        <div class="receipt-line"><span>Pending</span><span id="previewPending">Rs. 0.00</span></div>
+      </div>
+    </article>
+  </aside>
+</section>
+
+<script type="application/json" id="productData">{{ products_json|safe }}</script>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/billing.js') }}"></script>
+{% endblock %}

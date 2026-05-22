@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="page-hero">
+  <div>
+    <p class="eyebrow">Customer credit</p>
+    <h2>{{ customer.name }}</h2>
+    <p>{{ customer.mobile }} &middot; {{ customer.address or 'Address not set' }}</p>
+  </div>
+  <div class="hero-actions">
+    <button class="btn btn-primary" type="button" data-open-collect="{{ customer.id }}">Collect Payment</button>
+    <a class="btn btn-ghost" href="{{ url_for('udhar.udhar') }}">All Customers</a>
+  </div>
+</section>
+
+<section class="split-layout">
+  <article class="panel">
+    <div class="section-head">
+      <div>
+        <h2>Credit Summary</h2>
+        <p>Customer balance and payment progress.</p>
+      </div>
+    </div>
+    <div class="success-grid">
+      <div><span>Total Udhar</span><strong>{{ customer.total_udhar|money }}</strong></div>
+      <div><span>Paid Amount</span><strong>{{ customer.paid_amount|money }}</strong></div>
+      <div><span>Pending</span><strong>{{ customer.pending_amount|money }}</strong></div>
+    </div>
+
+    <div class="modal" id="collectModal-{{ customer.id }}">
+      <div class="modal-card">
+        <button class="modal-close" type="button" data-close-modal>&times;</button>
+        <h2>Collect Payment</h2>
+        <form method="post" action="{{ url_for('udhar.collect_payment') }}" class="form-stack">
+          <input type="hidden" name="customer_id" value="{{ customer.id }}">
+          <label>Amount received
+            <input name="amount" type="number" min="1" step="0.01" max="{{ customer.pending_amount }}" required>
+          </label>
+          <label>Payment mode
+            <select name="payment_mode">
+              <option>Cash</option>
+              <option>UPI</option>
+              <option>Card</option>
+            </select>
+          </label>
+          <label>Note
+            <textarea name="note" rows="2"></textarea>
+          </label>
+          <label class="check-line">
+            <input type="checkbox" name="adjustment"> Mark as adjustment
+          </label>
+          <button class="btn btn-primary" type="submit">Save Payment</button>
+        </form>
+      </div>
+    </div>
+  </article>
+
+  <article class="panel">
+    <div class="section-head"><h2>Transaction History</h2></div>
+    {% if transactions %}
+      <div class="table-wrap">
+        <table class="data-table">
+          <thead>
+            <tr><th>Date</th><th>Type</th><th>Amount</th><th>Paid</th><th>Pending</th><th>Mode</th><th>Note</th></tr>
+          </thead>
+          <tbody>
+            {% for txn in transactions %}
+              <tr>
+                <td>{{ txn.created_at.strftime('%d %b %Y') }}</td>
+                <td><span class="badge">{{ txn.type }}</span></td>
+                <td>{{ txn.amount|money }}</td>
+                <td>{{ txn.paid_amount|money }}</td>
+                <td>{{ txn.pending_amount|money }}</td>
+                <td>{{ txn.payment_mode or '-' }}</td>
+                <td>{{ txn.note or '-' }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <div class="empty-state">No transactions for this customer.</div>
+    {% endif %}
+  </article>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/udhar.js') }}"></script>
+{% endblock %}

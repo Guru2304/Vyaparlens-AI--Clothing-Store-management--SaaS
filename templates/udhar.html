@@ -1,0 +1,111 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="page-hero">
+  <div>
+    <p class="eyebrow">Credit control</p>
+    <h2>Udhar management</h2>
+    <p>Track pending credit and collect customer payments.</p>
+  </div>
+  <div class="hero-actions">
+    <a class="btn btn-primary" href="{{ url_for('billing.billing') }}">Create Bill</a>
+  </div>
+</section>
+
+<section class="stats-grid compact-grid">
+  <article class="stat-card warning">
+    <span class="stat-dot">P</span>
+    <p>Total Pending Udhar</p>
+    <h2>{{ pending_total|money }}</h2>
+    <small>Across all customers</small>
+  </article>
+  <article class="stat-card primary">
+    <span class="stat-dot">C</span>
+    <p>Udhar Customers</p>
+    <h2>{{ customers|length }}</h2>
+    <small>Customers with credit history</small>
+  </article>
+  <article class="stat-card success">
+    <span class="stat-dot">R</span>
+    <p>Collected This Month</p>
+    <h2>{{ collected_month|money }}</h2>
+    <small>Payments received</small>
+  </article>
+  <article class="stat-card danger">
+    <span class="stat-dot">H</span>
+    <p>Highest Pending</p>
+    <h2>{{ highest_pending.name if highest_pending else 'None' }}</h2>
+    <small>{{ highest_pending.pending_amount|money if highest_pending else 'No pending udhar' }}</small>
+  </article>
+</section>
+
+<section class="panel">
+  <div class="section-head">
+    <div>
+      <h2>Credit Customers</h2>
+      <p>Collect payments and review customer history.</p>
+    </div>
+  </div>
+
+  {% if customers %}
+    <div class="table-wrap">
+      <table class="data-table">
+        <thead>
+          <tr><th>Customer</th><th>Mobile</th><th>Address</th><th>Pending</th><th>Last Transaction</th><th>Actions</th></tr>
+        </thead>
+        <tbody>
+          {% for customer in customers %}
+            {% set last_txn = customer.transactions|sort(attribute='created_at')|last %}
+            <tr>
+              <td><strong>{{ customer.name }}</strong></td>
+              <td>{{ customer.mobile }}</td>
+              <td>{{ customer.address or 'Not set' }}</td>
+              <td><span class="badge warning">{{ customer.pending_amount|money }}</span></td>
+              <td>{{ last_txn.created_at.strftime('%d %b %Y') if last_txn else '-' }}</td>
+              <td>
+                <div class="button-row tight">
+                  <a class="btn btn-secondary compact" href="{{ url_for('udhar.customer_profile', customer_id=customer.id) }}">Profile</a>
+                  <button class="btn btn-primary compact" type="button" data-open-collect="{{ customer.id }}">Collect</button>
+                </div>
+                <div class="modal" id="collectModal-{{ customer.id }}">
+                  <div class="modal-card">
+                    <button class="modal-close" type="button" data-close-modal>&times;</button>
+                    <h2>Collect Payment</h2>
+                    <form method="post" action="{{ url_for('udhar.collect_payment') }}" class="form-stack">
+                      <input type="hidden" name="customer_id" value="{{ customer.id }}">
+                      <p class="muted">Pending for {{ customer.name }}: {{ customer.pending_amount|money }}</p>
+                      <label>Amount received
+                        <input name="amount" type="number" min="1" step="0.01" max="{{ customer.pending_amount }}" required>
+                      </label>
+                      <label>Payment mode
+                        <select name="payment_mode">
+                          <option>Cash</option>
+                          <option>UPI</option>
+                          <option>Card</option>
+                        </select>
+                      </label>
+                      <label>Note
+                        <textarea name="note" rows="2"></textarea>
+                      </label>
+                      <label class="check-line">
+                        <input type="checkbox" name="adjustment"> Mark as adjustment
+                      </label>
+                      <button class="btn btn-primary" type="submit">Save Payment</button>
+                    </form>
+                  </div>
+                </div>
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% else %}
+    <div class="empty-state">No udhar customers yet. Credit customers appear after partial or udhar bills.</div>
+  {% endif %}
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/udhar.js') }}"></script>
+{% endblock %}

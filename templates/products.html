@@ -1,0 +1,224 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="page-hero">
+  <div>
+    <p class="eyebrow">Catalog setup</p>
+    <h2>Add products with size and colour variants</h2>
+    <p>Build accurate clothing inventory from the first entry.</p>
+  </div>
+  <div class="hero-actions">
+    <a class="btn btn-ghost" href="{{ url_for('inventory.inventory') }}">View Inventory</a>
+    <a class="btn btn-primary" href="{{ url_for('billing.billing') }}">Create Bill</a>
+  </div>
+</section>
+
+<section class="split-layout product-layout">
+  <form method="post" action="{{ url_for('products.add_product') }}" class="product-form-sections" id="productForm">
+    <article class="panel">
+      <div class="section-head">
+        <div>
+          <h2>Basic Information</h2>
+          <p>Brand, category and supplier details.</p>
+        </div>
+      </div>
+      <div class="form-grid two">
+        <label>Brand Name
+          <input name="brand_name" placeholder="e.g. Bhugoal">
+        </label>
+        <label>Product Name
+          <input name="product_name" required placeholder="e.g. Shirt, Cotton Shirt, Formal Shirt">
+        </label>
+      </div>
+      <p class="form-help">Do not repeat brand name in product name. If you do, the app will still avoid duplicate display.</p>
+      <div class="form-grid two">
+        <label>Category
+          <select name="category" id="categorySelect" required>
+            {% for category in categories %}
+              <option value="{{ category }}">{{ category }}</option>
+            {% endfor %}
+          </select>
+        </label>
+        <label>Custom category
+          <input name="custom_category" placeholder="Use when category is Other">
+        </label>
+      </div>
+      <div class="form-grid three">
+        <label>Fabric Type
+          <input name="fabric_type" placeholder="Knitted Fabric">
+        </label>
+        <label>Gender
+          <select name="gender">
+            <option>Men</option>
+            <option>Women</option>
+            <option>Kids</option>
+            <option>Unisex</option>
+          </select>
+        </label>
+        <label>Supplier Name
+          <input name="supplier_name">
+        </label>
+      </div>
+    </article>
+
+    <article class="panel">
+      <div class="section-head">
+        <div>
+          <h2>Pricing</h2>
+          <p>Used for billing, profit and stock value calculations.</p>
+        </div>
+      </div>
+      <div class="form-grid three">
+        <label>Buying Price
+          <input name="buying_price" id="buyingPrice" type="number" min="0" step="0.01" required>
+        </label>
+        <label>Selling Price
+          <input name="selling_price" id="sellingPrice" type="number" min="0" step="0.01" required>
+        </label>
+        <label>MRP
+          <input name="mrp" type="number" min="0" step="0.01">
+        </label>
+      </div>
+      <div class="form-grid three">
+        <label>Minimum Selling Price
+          <input name="minimum_selling_price" type="number" min="0" step="0.01">
+        </label>
+        <label>Low Stock Limit
+          <input name="low_stock_limit" type="number" min="0" value="5">
+        </label>
+        <label>Total Quantity
+          <input name="total_quantity" id="totalQuantity" type="number" min="1" required>
+        </label>
+      </div>
+    </article>
+
+    <article class="panel">
+      <div class="section-head">
+        <div>
+          <h2>Variants</h2>
+          <p>Choose standard or custom sizes and colours.</p>
+        </div>
+      </div>
+      <div class="choice-panel">
+        <div class="section-head small"><h3>Sizes</h3></div>
+        <div class="chip-row" id="sizeChips">
+          {% for size in shirt_sizes %}
+            <button type="button" class="chip active" data-token="{{ size }}">{{ size }}</button>
+          {% endfor %}
+        </div>
+        <div class="inline-add">
+          <input id="customSize" placeholder="Custom size">
+          <button class="btn btn-secondary" type="button" data-add-token="size">Add Size</button>
+        </div>
+      </div>
+
+      <div class="choice-panel">
+        <div class="section-head small"><h3>Colours</h3></div>
+        <div class="chip-row" id="colourChips">
+          {% for colour in colours %}
+            <button type="button" class="chip active" data-token="{{ colour }}">{{ colour }}</button>
+          {% endfor %}
+        </div>
+        <div class="inline-add">
+          <input id="customColour" placeholder="Custom colour">
+          <button class="btn btn-secondary" type="button" data-add-token="colour">Add Colour</button>
+        </div>
+      </div>
+
+      <input type="hidden" name="sizes" id="sizesInput" value="{{ shirt_sizes|join(',') }}">
+      <input type="hidden" name="colours" id="coloursInput" value="{{ colours|join(',') }}">
+      <input type="hidden" name="variant_distribution" id="variantDistribution">
+    </article>
+
+    <article class="panel">
+      <div class="section-head">
+        <div>
+          <h2>Quantity Distribution</h2>
+          <p>Split total stock across every selected colour and size.</p>
+        </div>
+      </div>
+      <div class="distribution">
+        <label><input type="radio" name="distribution_mode" value="equal" checked> Equal Distribution</label>
+        <label><input type="radio" name="distribution_mode" value="recommended"> Recommended Distribution</label>
+        <label><input type="radio" name="distribution_mode" value="manual"> Manual Distribution</label>
+      </div>
+
+      <div class="manual-grid-wrap hidden" id="manualGridWrap">
+        <div class="section-head small">
+          <h3>Manual Quantity Grid</h3>
+          <p><span id="enteredQty">0</span> entered, <span id="remainingQty">0</span> remaining</p>
+        </div>
+        <div class="distribution-status" id="distributionStatus">Select manual distribution and enter quantities.</div>
+        <div class="table-wrap" id="manualGrid"></div>
+      </div>
+
+      <button class="btn btn-primary btn-lg" type="submit">Save Product</button>
+    </article>
+  </form>
+
+  <aside class="sticky-panel product-summary-panel">
+    <article class="panel">
+      <div class="section-head">
+        <div>
+          <h2>Entry Summary</h2>
+          <p>Live stock and value preview.</p>
+        </div>
+      </div>
+      <div class="summary-metrics">
+        <div class="summary-tile"><span>Total Quantity</span><strong id="summaryTotalQty">0</strong></div>
+        <div class="summary-tile"><span>Total Entered</span><strong id="summaryEnteredQty">0</strong></div>
+        <div class="summary-tile"><span>Remaining</span><strong id="summaryRemainingQty">0</strong></div>
+        <div class="summary-tile"><span>Expected Revenue</span><strong id="summaryRevenue">Rs. 0.00</strong></div>
+        <div class="summary-tile"><span>Expected Profit</span><strong id="summaryProfit">Rs. 0.00</strong></div>
+      </div>
+    </article>
+
+    <article class="panel">
+      <div class="section-head">
+        <div>
+          <h2>Products</h2>
+          <p>{{ products|length }} products in catalog.</p>
+        </div>
+      </div>
+      {% if products %}
+        <div class="stack-list">
+          {% for product in products %}
+            <div class="product-summary">
+              <div>
+                <strong>{{ display_product_name(product.brand_name, product.product_name) }}</strong>
+                <span>{{ product.category }} &middot; {{ product.total_quantity }} pcs &middot; {{ product.selling_price|money }}</span>
+              </div>
+              <a class="btn btn-secondary btn-sm" href="{{ url_for('inventory.inventory') }}">Stock</a>
+            </div>
+          {% endfor %}
+        </div>
+      {% else %}
+        <div class="empty-state">No products yet. Add your first product with variants.</div>
+      {% endif %}
+    </article>
+  </aside>
+</section>
+
+{% if success %}
+<div class="modal open" id="successModal">
+  <div class="modal-card">
+    <button class="modal-close" type="button" data-close-modal>&times;</button>
+    <h2>Product Added Successfully</h2>
+    <div class="success-grid">
+      <div><span>Total Variants</span><strong>{{ variant_count }}</strong></div>
+      <div><span>Total Quantity</span><strong>{{ total_quantity }}</strong></div>
+      <div><span>Expected Revenue</span><strong>{{ expected_revenue|float|money }}</strong></div>
+      <div><span>Expected Profit</span><strong>{{ expected_profit|float|money }}</strong></div>
+    </div>
+  </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+  window.defaultShirtSizes = {{ shirt_sizes|tojson }};
+  window.defaultPantSizes = {{ pant_sizes|tojson }};
+</script>
+<script src="{{ url_for('static', filename='js/products.js') }}"></script>
+{% endblock %}

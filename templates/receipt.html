@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="page-hero">
+  <div>
+    <p class="eyebrow">Receipt</p>
+    <h2>Bill generated successfully</h2>
+    <p>Customer-safe receipt with no buying price, profit or margin shown.</p>
+  </div>
+</section>
+
+<section class="receipt-page">
+  <div class="panel receipt-shell">
+    <div class="receipt-actions">
+      <button class="btn btn-secondary" type="button" id="printReceipt">Print Receipt</button>
+      <button class="btn btn-secondary" type="button" id="downloadReceipt">Download Receipt</button>
+      <a class="btn btn-primary" href="{{ url_for('billing.billing') }}">New Bill</a>
+    </div>
+
+    <article class="receipt-paper" id="receiptPaper">
+      <div class="receipt-center">
+        <h2>{{ merchant.shop_name|upper }}</h2>
+        <p>{{ merchant.shop_address }}</p>
+        {% if merchant.gst_number %}<p>GST: {{ merchant.gst_number }}</p>{% endif %}
+      </div>
+      <div class="receipt-line">
+        <span>{{ bill.bill_number }}</span>
+        <span>{{ bill.created_at.strftime('%d/%m/%Y') }}</span>
+      </div>
+      <hr>
+      {% for item in bill.items %}
+        {% set item_subtotal = (item.line_total or 0) + (item.discount or 0) %}
+        <div class="receipt-item">
+          <strong>{{ display_product_name(item.brand_name, item.product_name) }}</strong>
+          <div>
+            <span>{{ item.colour }} / {{ item.size }} x{{ item.quantity }}</span>
+            <span>{{ item_subtotal|money }}</span>
+          </div>
+          {% if item.discount and item.discount > 0 %}
+            <div class="receipt-discount">
+              <span>Discount</span>
+              <span>-{{ item.discount|money }}</span>
+            </div>
+            <div>
+              <span>Item Total</span>
+              <span>{{ item.line_total|money }}</span>
+            </div>
+          {% endif %}
+        </div>
+      {% endfor %}
+      <hr>
+      <div class="receipt-line"><span>Subtotal</span><span>{{ bill.subtotal|money }}</span></div>
+      {% if bill.discount > 0 %}
+        <div class="receipt-line"><span>Discount</span><span>{{ bill.discount|money }}</span></div>
+      {% endif %}
+      <div class="receipt-line total"><span>Total</span><strong>{{ bill.total_amount|money }}</strong></div>
+      <div class="receipt-line"><span>Paid</span><span>{{ bill.paid_amount|money }}</span></div>
+      {% if bill.pending_amount > 0 %}
+        <div class="receipt-line"><span>Pending</span><span>{{ bill.pending_amount|money }}</span></div>
+      {% endif %}
+      <div class="receipt-line"><span>Payment</span><span>{{ bill.payment_mode }}</span></div>
+      <hr>
+      <div class="receipt-center footer">
+        {% for line in merchant.receipt_footer.splitlines() %}
+          <p>{{ line }}</p>
+        {% endfor %}
+      </div>
+    </article>
+  </div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/receipt.js') }}"></script>
+{% endblock %}

@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ page_title or 'VyaparLens' }} | VyaparLens</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/animations.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/responsive.css') }}">
+</head>
+<body class="app-body">
+  <div class="app-shell">
+    <div class="sidebar-overlay" data-sidebar-close></div>
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-top">
+        <a class="brand" href="{{ url_for('main.dashboard') }}">
+          <img src="{{ url_for('static', filename='assets/logo.svg') }}" alt="VyaparLens">
+          <span>
+            <strong>VyaparLens</strong>
+            <small>Merchant OS</small>
+          </span>
+        </a>
+        <div class="shop-mini">
+          <span>{{ merchant.shop_name[:1]|upper }}</span>
+          <div>
+            <strong>{{ merchant.shop_name }}</strong>
+            <small>{{ merchant.name }}</small>
+          </div>
+        </div>
+      </div>
+
+      <nav class="side-nav" aria-label="Main navigation">
+        <a class="{{ 'active' if request.endpoint == 'main.dashboard' else '' }}" href="{{ url_for('main.dashboard') }}"><span class="nav-icon">D</span>Dashboard</a>
+        <a class="{{ 'active' if request.endpoint and request.endpoint.startswith('products.') else '' }}" href="{{ url_for('products.products') }}"><span class="nav-icon">P</span>Products</a>
+        <a class="{{ 'active' if request.endpoint and request.endpoint.startswith('inventory.') else '' }}" href="{{ url_for('inventory.inventory') }}"><span class="nav-icon">I</span>Inventory</a>
+        <a class="{{ 'active' if request.endpoint and request.endpoint.startswith('billing.') else '' }}" href="{{ url_for('billing.billing') }}"><span class="nav-icon">B</span>Billing</a>
+        <a class="{{ 'active' if request.endpoint and request.endpoint.startswith('udhar.') else '' }}" href="{{ url_for('udhar.udhar') }}"><span class="nav-icon">U</span>Udhar</a>
+        <a class="{{ 'active' if request.endpoint and request.endpoint.startswith('reports.') else '' }}" href="{{ url_for('reports.reports') }}"><span class="nav-icon">R</span>Reports</a>
+        <a class="{{ 'active' if request.endpoint == 'main.settings' else '' }}" href="{{ url_for('main.settings') }}"><span class="nav-icon">S</span>Settings</a>
+      </nav>
+
+      <div class="sidebar-bottom">
+        <a class="logout-link" href="{{ url_for('auth.logout') }}"><span class="nav-icon">L</span>Logout</a>
+      </div>
+    </aside>
+
+    <div class="main-wrap">
+      <header class="topbar">
+        <div class="topbar-title">
+          <button class="icon-btn mobile-menu" type="button" data-sidebar-toggle aria-label="Open menu">Menu</button>
+          <div>
+            <p class="eyebrow">VyaparLens</p>
+            <h1>{{ page_title or 'Dashboard' }}</h1>
+            <p class="topbar-subtitle">Smart billing, inventory and profit control for your store.</p>
+          </div>
+        </div>
+        <div class="topbar-actions">
+          <div class="shop-badge">
+            <span>{{ merchant.shop_name }}</span>
+            <small>{{ merchant.mobile }}</small>
+          </div>
+          <a class="btn btn-primary" href="{{ url_for('billing.billing') }}">Create Bill</a>
+        </div>
+      </header>
+
+      <main class="content page-content page-transition">
+        {% block content %}{% endblock %}
+      </main>
+    </div>
+  </div>
+
+  <div class="toast-wrap" id="toastWrap">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% for category, message in messages %}
+        <div class="toast {{ category }}">{{ message }}</div>
+      {% endfor %}
+    {% endwith %}
+  </div>
+
+  <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+  {% block scripts %}{% endblock %}
+</body>
+</html>

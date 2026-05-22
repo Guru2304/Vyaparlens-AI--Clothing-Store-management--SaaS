@@ -1,0 +1,144 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="page-hero">
+  <div>
+    <p class="eyebrow">Stock control</p>
+    <h2>Inventory workspace</h2>
+    <p>Search, filter and update stock by product variant.</p>
+  </div>
+  <div class="hero-actions">
+    <a class="btn btn-primary" href="{{ url_for('products.products') }}">Add Product</a>
+    <a class="btn btn-secondary" href="{{ url_for('billing.billing') }}">Create Bill</a>
+  </div>
+</section>
+
+<section class="panel">
+  <div class="section-head">
+    <div>
+      <h2>Search & Filters</h2>
+      <p>Quickly narrow your catalog for daily operations.</p>
+    </div>
+  </div>
+
+  <div class="filter-bar">
+    <input id="inventorySearch" placeholder="Search product, brand, colour, size">
+    <select id="categoryFilter">
+      <option value="">All categories</option>
+      {% for category in categories %}
+        <option value="{{ category }}">{{ category }}</option>
+      {% endfor %}
+    </select>
+    <select id="brandFilter">
+      <option value="">All brands</option>
+      {% for brand in brands %}
+        <option value="{{ brand }}">{{ brand }}</option>
+      {% endfor %}
+    </select>
+    <select id="stockFilter">
+      <option value="">All stock</option>
+      <option value="low">Low stock</option>
+    </select>
+    <select id="sortInventory">
+      <option value="">Sort default</option>
+      <option value="stock">Sort by stock</option>
+      <option value="profit">Sort by profit</option>
+    </select>
+  </div>
+
+  {% if products %}
+    <div class="inventory-list" id="inventoryList">
+      {% for product in products %}
+        {% set expected_profit = (product.selling_price - product.buying_price) * product.total_quantity %}
+        {% set low = product.variants|selectattr('quantity', 'le', product.low_stock_limit)|list|length > 0 %}
+        <article class="inventory-card" data-name="{{ product.product_name|lower }}" data-brand="{{ product.brand_name }}" data-category="{{ product.category }}" data-stock="{{ product.total_quantity }}" data-profit="{{ expected_profit }}" data-low="{{ '1' if low else '0' }}">
+          <div class="inventory-main">
+            <div>
+              <h3>{{ display_product_name(product.brand_name, product.product_name) }}</h3>
+              <p>{{ product.category }} &middot; {{ product.fabric_type or 'Fabric not set' }}</p>
+            </div>
+            <div class="inventory-metrics">
+              <span><b>{{ product.total_quantity }}</b> Stock</span>
+              <span><b>{{ product.selling_price|money }}</b> Selling</span>
+              <span><b>{{ expected_profit|money }}</b> Expected profit</span>
+              {% if low %}<span class="badge danger">Low Stock</span>{% endif %}
+            </div>
+          </div>
+
+          <div class="button-row">
+            <button class="btn btn-secondary compact" type="button" data-toggle-target="variants-{{ product.id }}">View Variants</button>
+            <button class="btn btn-secondary compact" type="button" data-open-stock="{{ product.id }}">Edit Stock</button>
+            <a class="btn btn-primary compact" href="{{ url_for('billing.billing') }}">Create Bill</a>
+          </div>
+
+          <details class="internal-details">
+            <summary>Internal details</summary>
+            <p>Buying price: {{ product.buying_price|money }} &middot; Minimum selling price: {{ product.minimum_selling_price|money }} &middot; Supplier: {{ product.supplier_name or 'Not set' }}</p>
+          </details>
+
+          <div class="variant-panel hidden" id="variants-{{ product.id }}">
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr><th>Colour</th><th>Size</th><th>Quantity</th><th>Status</th><th>SKU</th></tr>
+                </thead>
+                <tbody>
+                  {% for variant in product.variants %}
+                    <tr>
+                      <td>{{ variant.colour }}</td>
+                      <td>{{ variant.size }}</td>
+                      <td><strong>{{ variant.quantity }}</strong></td>
+                      <td>
+                        {% if variant.quantity <= product.low_stock_limit %}
+                          <span class="badge-danger">Low</span>
+                        {% else %}
+                          <span class="badge-success">Healthy</span>
+                        {% endif %}
+                      </td>
+                      <td>{{ variant.sku }}</td>
+                    </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div class="modal" id="stockModal-{{ product.id }}">
+            <div class="modal-card">
+              <button class="modal-close" type="button" data-close-modal>&times;</button>
+              <h2>Update Stock</h2>
+              <form method="post" action="{{ url_for('inventory.update_stock') }}" class="form-stack">
+                <label>Variant
+                  <select name="variant_id" required>
+                    {% for variant in product.variants %}
+                      <option value="{{ variant.id }}">{{ variant.colour }} / {{ variant.size }} - {{ variant.quantity }} pcs</option>
+                    {% endfor %}
+                  </select>
+                </label>
+                <div class="form-grid two">
+                  <label>Action
+                    <select name="action">
+                      <option value="add">Add stock</option>
+                      <option value="reduce">Reduce stock</option>
+                    </select>
+                  </label>
+                  <label>Quantity
+                    <input name="quantity" type="number" min="1" required>
+                  </label>
+                </div>
+                <button class="btn btn-primary" type="submit">Save Update</button>
+              </form>
+            </div>
+          </div>
+        </article>
+      {% endfor %}
+    </div>
+  {% else %}
+    <div class="empty-state">No products yet. Add products to start tracking inventory.</div>
+  {% endif %}
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/inventory.js') }}"></script>
+{% endblock %}
