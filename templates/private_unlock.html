@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="panel private-lock-panel">
+  <div class="lock-icon">🔒</div>
+  <div>
+    <p class="eyebrow">Owner password required</p>
+    <h2>{{ title }}</h2>
+    <p>{{ description }}</p>
+    <form method="post" action="{{ url_for('main.unlock_dashboard_privacy') }}" class="privacy-unlock-form">
+      <input type="hidden" name="next" value="{{ next_endpoint }}">
+      <input name="owner_password" type="password" placeholder="Owner password" required autocomplete="current-password">
+      <button class="btn btn-primary btn-sm" type="submit">Unlock Private Access</button>
+    </form>
+  </div>
+</section>
+{% endblock %}

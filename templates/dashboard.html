@@ -5,7 +5,22 @@
   <div>
     <p class="eyebrow">Today at {{ merchant.shop_name }}</p>
     <h2>Welcome back, {{ merchant.shop_name }}</h2>
-    <p>Here is your store performance today.</p>
+    <p>Here is your store performance today. Inventory value stays inside Private Reports only.</p>
+    <div class="privacy-helper">
+      {% if sensitive_unlocked %}
+        <span>Private dashboard values are visible. Inventory value is only in Private Reports.</span>
+        <form method="post" action="{{ url_for('main.lock_dashboard_privacy') }}">
+          <button class="btn btn-secondary btn-sm privacy-toggle privacy-visible" type="submit">Hide Values</button>
+        </form>
+      {% else %}
+        <span>Privacy mode is on. Enter owner password to reveal dashboard sales, profit, udhar and insights.</span>
+        <form method="post" action="{{ url_for('main.unlock_dashboard_privacy') }}" class="privacy-unlock-form">
+          <input type="hidden" name="next" value="main.dashboard">
+          <input name="owner_password" type="password" placeholder="Owner password" required autocomplete="current-password">
+          <button class="btn btn-secondary btn-sm privacy-toggle" type="submit">Reveal Values</button>
+        </form>
+      {% endif %}
+    </div>
   </div>
   <div class="quick-actions">
     <a class="btn btn-secondary" href="{{ url_for('products.products') }}">Add Product</a>
@@ -14,12 +29,25 @@
   </div>
 </section>
 
+{% if not sensitive_unlocked %}
+<section class="panel private-lock-panel">
+  <div class="lock-icon">🔒</div>
+  <div>
+    <h2>Private dashboard is locked</h2>
+    <p>Sales, profit, udhar, recent bill amounts, payment collection and insights are available only after entering the owner password. Inventory value is kept in Private Reports.</p>
+  </div>
+</section>
+{% else %}
 <section class="stats-grid">
   {% for stat in stats %}
-    <article class="stat-card {% if stat.label == 'Today Sales' %}primary-card{% elif stat.label == 'Today Profit' %}success-card{% elif stat.label == 'Today Bills' %}sky-card{% elif stat.label == 'Today Udhar' %}warning-card{% elif stat.label == 'Inventory Value' %}orange-card{% elif stat.label == 'Low Stock Items' %}danger-card{% elif stat.label == 'Pending Udhar' %}warning-card{% elif stat.label == 'Top Product' %}primary-card{% else %}{{ stat.tone }}{% endif %}">
+    <article class="stat-card {% if stat.label == 'Today Sales' %}primary-card{% elif stat.label == 'Today Profit' %}success-card{% elif stat.label == 'Today Bills' %}sky-card{% elif stat.label == 'Today Udhar' %}warning-card{% elif stat.label == 'Low Stock Items' %}danger-card{% elif stat.label == 'Pending Udhar' %}warning-card{% elif stat.label == 'Top Product' %}primary-card{% else %}{{ stat.tone }}{% endif %}">
       <span class="stat-dot">{{ stat.label[:1] }}</span>
       <p>{{ stat.label }}</p>
-      <h2 class="stat-value {{ stat.value_class|default('') }}">{{ stat.value }}</h2>
+      {% if stat.sensitive %}
+        <h2 class="stat-value private-value {{ stat.value_class|default('') }}">{{ stat.value if sensitive_unlocked else stat.mask|default('••••••') }}</h2>
+      {% else %}
+        <h2 class="stat-value {{ stat.value_class|default('') }}">{{ stat.value }}</h2>
+      {% endif %}
       <small>{{ stat.hint }}</small>
     </article>
   {% endfor %}
@@ -49,8 +77,8 @@
                 <td><a href="{{ url_for('billing.receipt', bill_id=bill.id) }}">{{ bill.bill_number }}</a></td>
                 <td>{{ bill.created_at.strftime('%d %b, %I:%M %p') }}</td>
                 <td><span class="badge">{{ bill.payment_mode }}</span></td>
-                <td class="table-currency">{{ bill.total_amount|money }}</td>
-                <td class="table-currency">{{ bill.pending_amount|money }}</td>
+                <td class="table-currency"><span class="private-value">{{ bill.total_amount|money if sensitive_unlocked else '₹••••' }}</span></td>
+                <td class="table-currency"><span class="private-value">{{ bill.pending_amount|money if sensitive_unlocked else '₹••••' }}</span></td>
               </tr>
             {% endfor %}
           </tbody>
@@ -71,7 +99,7 @@
       </div>
       <div class="stack-list">
         {% for insight in insights %}
-          <div class="insight">{{ insight }}</div>
+          <div class="insight private-value">{{ insight if sensitive_unlocked else 'Hidden until owner password is entered.' }}</div>
         {% endfor %}
       </div>
     </article>
@@ -111,11 +139,12 @@
         {% for mode, amount in payment_summary.items() %}
           <div class="list-row">
             <span>{{ mode }}</span>
-            <strong>{{ amount|money }}</strong>
+            <strong class="private-value">{{ amount|money if sensitive_unlocked else '₹••••' }}</strong>
           </div>
         {% endfor %}
       </div>
     </article>
   </div>
 </section>
+{% endif %}
 {% endblock %}

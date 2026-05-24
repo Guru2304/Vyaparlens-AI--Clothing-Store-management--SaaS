@@ -17,11 +17,54 @@ def login_required(view):
     return wrapped
 
 
-def current_merchant():
+def current_user():
     merchant_id = session.get("merchant_id")
     if not merchant_id:
         return None
     return Merchant.query.get(merchant_id)
+
+
+def get_current_owner_id():
+    return session.get("merchant_id")
+
+
+def current_merchant():
+    owner_id = get_current_owner_id()
+    if not owner_id:
+        return None
+    return Merchant.query.get(owner_id)
+
+
+def is_owner():
+    return session.get("role", "owner") == "owner"
+
+
+def owner_required(view):
+    @wraps(view)
+    def wrapped(*args, **kwargs):
+        if not session.get("merchant_id"):
+            flash("Please login to continue.", "error")
+            return redirect(url_for("auth.auth"))
+        if not is_owner():
+            flash("You do not have permission to view this page.", "error")
+            return redirect(url_for("billing.billing"))
+        return view(*args, **kwargs)
+
+    return wrapped
+
+
+def billing_allowed(view):
+    @wraps(view)
+    def wrapped(*args, **kwargs):
+        if not session.get("merchant_id"):
+            flash("Please login to continue.", "error")
+            return redirect(url_for("auth.auth"))
+        if not is_owner():
+            flash("You do not have permission to view this page.", "error")
+            return redirect(url_for("auth.auth"))
+        return view(*args, **kwargs)
+
+    return wrapped
 
 
 def format_currency(value):

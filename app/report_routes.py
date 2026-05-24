@@ -1,6 +1,6 @@
 import json
 
-from flask import Blueprint, render_template
+from flask import Blueprint, render_template, session
 from sqlalchemy import func
 
 from .analytics import (
@@ -16,17 +16,27 @@ from .analytics import (
     category_sales,
     daily_sales_series,
 )
-from .helpers import current_merchant, display_product_name, login_required
+from .helpers import current_merchant, display_product_name, owner_required
 from .models import Bill, BillItem
 
 
 report_bp = Blueprint("reports", __name__, url_prefix="/reports")
 
 
-@report_bp.route("/")
-@login_required
+@report_bp.route("/", strict_slashes=False)
+@owner_required
 def reports():
     merchant = current_merchant()
+    if not session.get("sensitive_unlocked"):
+        return render_template(
+            "private_unlock.html",
+            merchant=merchant,
+            page_title="Private Reports",
+            title="Private reports are locked",
+            description="Sales, profit, margin, inventory value, product performance and udhar reports require the owner password.",
+            next_endpoint="reports.reports",
+        )
+
     gross_sales = sum(bill.total_amount for bill in Bill.query.filter_by(merchant_id=merchant.id).all())
     gross_profit = sum(bill.gross_profit for bill in Bill.query.filter_by(merchant_id=merchant.id).all())
     total_bills = Bill.query.filter_by(merchant_id=merchant.id).count()

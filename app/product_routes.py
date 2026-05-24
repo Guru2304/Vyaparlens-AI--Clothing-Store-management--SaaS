@@ -3,7 +3,7 @@ import json
 from flask import Blueprint, flash, redirect, render_template, request, url_for
 
 from . import db
-from .helpers import current_merchant, login_required, parse_tokens, safe_float, safe_int
+from .helpers import current_merchant, owner_required, parse_tokens, safe_float, safe_int
 from .models import Product, Variant
 
 
@@ -19,8 +19,8 @@ DEFAULT_PANT_SIZES = ["28", "30", "32", "34", "36", "38", "40", "42"]
 DEFAULT_COLOURS = ["Black", "White", "Blue", "Green", "Charcoal", "Maroon", "Yellow", "Red", "Violet", "Gray"]
 
 
-@product_bp.route("/", methods=["GET"])
-@login_required
+@product_bp.route("/", methods=["GET"], strict_slashes=False)
+@owner_required
 def products():
     merchant = current_merchant()
     items = Product.query.filter_by(merchant_id=merchant.id).order_by(Product.created_at.desc()).all()
@@ -118,7 +118,7 @@ def _manual_quantities(raw_json, colours, sizes):
 
 
 @product_bp.route("/add", methods=["POST"])
-@login_required
+@owner_required
 def add_product():
     merchant = current_merchant()
     brand_name = request.form.get("brand_name", "").strip()

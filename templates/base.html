@@ -38,7 +38,7 @@
         <a class="{{ 'active' if request.endpoint and request.endpoint.startswith('inventory.') else '' }}" href="{{ url_for('inventory.inventory') }}"><span class="nav-icon">I</span>Inventory</a>
         <a class="{{ 'active' if request.endpoint and request.endpoint.startswith('billing.') else '' }}" href="{{ url_for('billing.billing') }}"><span class="nav-icon">B</span>Billing</a>
         <a class="{{ 'active' if request.endpoint and request.endpoint.startswith('udhar.') else '' }}" href="{{ url_for('udhar.udhar') }}"><span class="nav-icon">U</span>Udhar</a>
-        <a class="{{ 'active' if request.endpoint and request.endpoint.startswith('reports.') else '' }}" href="{{ url_for('reports.reports') }}"><span class="nav-icon">R</span>Reports</a>
+        <a class="{{ 'active' if request.endpoint and request.endpoint.startswith('reports.') else '' }}" href="{{ url_for('reports.reports') }}"><span class="nav-icon">PR</span>Private Reports</a>
         <a class="{{ 'active' if request.endpoint == 'main.settings' else '' }}" href="{{ url_for('main.settings') }}"><span class="nav-icon">S</span>Settings</a>
       </nav>
 
@@ -59,7 +59,7 @@
         </div>
         <div class="topbar-actions">
           <div class="shop-badge">
-            <span>{{ merchant.shop_name }}</span>
+            <span>{{ merchant.shop_name }} · Owner</span>
             <small>{{ merchant.mobile }}</small>
           </div>
           <a class="btn btn-primary" href="{{ url_for('billing.billing') }}">Create Bill</a>

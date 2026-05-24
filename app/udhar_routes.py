@@ -4,15 +4,15 @@ from flask import Blueprint, flash, redirect, render_template, request, url_for
 from sqlalchemy import func
 
 from . import db
-from .helpers import current_merchant, login_required, safe_float, safe_int
+from .helpers import current_merchant, owner_required, safe_float, safe_int
 from .models import CreditTransaction, Customer
 
 
 udhar_bp = Blueprint("udhar", __name__, url_prefix="/udhar")
 
 
-@udhar_bp.route("/")
-@login_required
+@udhar_bp.route("/", strict_slashes=False)
+@owner_required
 def udhar():
     merchant = current_merchant()
     customers = Customer.query.filter_by(merchant_id=merchant.id).order_by(Customer.pending_amount.desc()).all()
@@ -36,7 +36,7 @@ def udhar():
 
 
 @udhar_bp.route("/customer/<int:customer_id>")
-@login_required
+@owner_required
 def customer_profile(customer_id):
     merchant = current_merchant()
     customer = Customer.query.filter_by(id=customer_id, merchant_id=merchant.id).first_or_404()
@@ -54,7 +54,7 @@ def customer_profile(customer_id):
 
 
 @udhar_bp.route("/collect", methods=["POST"])
-@login_required
+@owner_required
 def collect_payment():
     merchant = current_merchant()
     customer_id = safe_int(request.form.get("customer_id"))

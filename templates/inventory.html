@@ -42,7 +42,7 @@
     <select id="sortInventory">
       <option value="">Sort default</option>
       <option value="stock">Sort by stock</option>
-      <option value="profit">Sort by profit</option>
+      {% if sensitive_unlocked %}<option value="profit">Sort by profit</option>{% endif %}
     </select>
   </div>
 
@@ -51,7 +51,7 @@
       {% for product in products %}
         {% set expected_profit = (product.selling_price - product.buying_price) * product.total_quantity %}
         {% set low = product.variants|selectattr('quantity', 'le', product.low_stock_limit)|list|length > 0 %}
-        <article class="inventory-card" data-name="{{ product.product_name|lower }}" data-brand="{{ product.brand_name }}" data-category="{{ product.category }}" data-stock="{{ product.total_quantity }}" data-profit="{{ expected_profit }}" data-low="{{ '1' if low else '0' }}">
+        <article class="inventory-card" data-name="{{ product.product_name|lower }}" data-brand="{{ product.brand_name }}" data-category="{{ product.category }}" data-stock="{{ product.total_quantity }}" {% if sensitive_unlocked %}data-profit="{{ expected_profit }}"{% endif %} data-low="{{ '1' if low else '0' }}">
           <div class="inventory-main">
             <div>
               <h3>{{ display_product_name(product.brand_name, product.product_name) }}</h3>
@@ -60,7 +60,9 @@
             <div class="inventory-metrics">
               <span><b>{{ product.total_quantity }}</b> Stock</span>
               <span><b>{{ product.selling_price|money }}</b> Selling</span>
-              <span><b>{{ expected_profit|money }}</b> Expected profit</span>
+              {% if sensitive_unlocked %}
+                <span><b>{{ expected_profit|money }}</b> Expected profit</span>
+              {% endif %}
               {% if low %}<span class="badge danger">Low Stock</span>{% endif %}
             </div>
           </div>
@@ -71,10 +73,14 @@
             <a class="btn btn-primary compact" href="{{ url_for('billing.billing') }}">Create Bill</a>
           </div>
 
-          <details class="internal-details">
-            <summary>Internal details</summary>
-            <p>Buying price: {{ product.buying_price|money }} &middot; Minimum selling price: {{ product.minimum_selling_price|money }} &middot; Supplier: {{ product.supplier_name or 'Not set' }}</p>
-          </details>
+          {% if sensitive_unlocked %}
+            <details class="internal-details">
+              <summary>Internal details</summary>
+              <p>Buying price: {{ product.buying_price|money }} &middot; Minimum selling price: {{ product.minimum_selling_price|money }} &middot; Supplier: {{ product.supplier_name or 'Not set' }}</p>
+            </details>
+          {% else %}
+            <div class="private-inline-note">Private cost and expected profit are hidden. Unlock from Dashboard to view internal details.</div>
+          {% endif %}
 
           <div class="variant-panel hidden" id="variants-{{ product.id }}">
             <div class="table-wrap">

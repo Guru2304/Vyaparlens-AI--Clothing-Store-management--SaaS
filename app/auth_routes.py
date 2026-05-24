@@ -33,10 +33,20 @@ def login():
     if not merchant or not check_password_hash(merchant.password_hash, password):
         flash("Invalid login details.", "error")
         return redirect(url_for("auth.auth"))
+    if (merchant.role or "owner") != "owner":
+        flash("Only the shop owner can login to this app.", "error")
+        return redirect(url_for("auth.auth"))
+    if merchant.is_active is False:
+        flash("This user is inactive. Contact the shop owner.", "error")
+        return redirect(url_for("auth.auth"))
 
     session.clear()
     session.permanent = True
     session["merchant_id"] = merchant.id
+    session["role"] = "owner"
+    session["owner_id"] = merchant.id
+    session["shop_name"] = merchant.shop_name
+    session["sensitive_unlocked"] = False
     flash("Welcome back.", "success")
     return redirect(url_for("main.dashboard"))
 
@@ -71,6 +81,9 @@ def signup():
         password_hash=generate_password_hash(password),
         shop_address=shop_address,
         receipt_footer="Thank YOU!!!\nVisit Again",
+        role="owner",
+        owner_id=None,
+        is_active=True,
     )
     db.session.add(merchant)
     db.session.commit()
@@ -78,6 +91,9 @@ def signup():
     session.clear()
     session.permanent = True
     session["merchant_id"] = merchant.id
+    session["role"] = "owner"
+    session["owner_id"] = merchant.id
+    session["shop_name"] = merchant.shop_name
     flash("Account created successfully.", "success")
     return redirect(url_for("main.dashboard"))
 

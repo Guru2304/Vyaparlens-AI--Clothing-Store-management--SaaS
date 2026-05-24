@@ -4,11 +4,12 @@ from flask import Blueprint, flash, redirect, render_template, request, url_for
 
 from . import db
 from .helpers import (
+    billing_allowed,
     calculate_item_pricing,
     current_merchant,
     display_product_name,
     generate_invoice_number,
-    login_required,
+    is_owner,
     safe_float,
     safe_int,
 )
@@ -29,7 +30,7 @@ def _product_payload(merchant_id):
                 "product_name": product.product_name,
                 "display_name": display_product_name(product.brand_name, product.product_name),
                 "category": product.category,
-                "buying_price": product.buying_price,
+                **({"buying_price": product.buying_price} if is_owner() else {}),
                 "selling_price": product.selling_price,
                 "minimum_selling_price": product.minimum_selling_price,
                 "variants": [
@@ -47,8 +48,8 @@ def _product_payload(merchant_id):
     return payload
 
 
-@billing_bp.route("/", methods=["GET"])
-@login_required
+@billing_bp.route("/", methods=["GET"], strict_slashes=False)
+@billing_allowed
 def billing():
     merchant = current_merchant()
     customers = Customer.query.filter_by(merchant_id=merchant.id).order_by(Customer.name.asc()).all()
@@ -157,8 +158,38 @@ def _prepare_bill_items(merchant_id, cart):
     return prepared, round(subtotal, 2), round(discount_total, 2), round(total_amount, 2), round(gross_profit, 2), None
 
 
+def _apply_settlement_discount(prepared_items, settlement_discount):
+    """Apply an accepted lower collection amount across items as extra discount."""
+    settlement_discount = round(float(settlement_discount or 0), 2)
+    if settlement_discount <= 0:
+        return round(sum(item["profit"] for item in prepared_items), 2)
+
+    base_total = round(sum(item["line_total"] for item in prepared_items), 2)
+    if base_total <= 0:
+        return round(sum(item["profit"] for item in prepared_items), 2)
+
+    remaining_discount = settlement_discount
+    gross_profit = 0
+    for index, item in enumerate(prepared_items):
+        if index == len(prepared_items) - 1:
+            share = remaining_discount
+        else:
+            share = round((item["line_total"] / base_total) * settlement_discount, 2)
+            remaining_discount = round(remaining_discount - share, 2)
+
+        share = min(max(share, 0), item["line_total"])
+        item["discount"] = round(item["discount"] + share, 2)
+        item["line_total"] = round(item["line_total"] - share, 2)
+        item["selling_price"] = round(item["line_total"] / item["quantity"], 2) if item["quantity"] else 0
+        cost = round(item["product"].buying_price * item["quantity"], 2)
+        item["profit"] = round(item["line_total"] - cost, 2)
+        gross_profit += item["profit"]
+
+    return round(gross_profit, 2)
+
+
 @billing_bp.route("/create", methods=["POST"])
-@login_required
+@billing_allowed
 def create_bill():
     merchant = current_merchant()
     try:
@@ -170,10 +201,10 @@ def create_bill():
         return redirect(url_for("billing.billing"))
 
     payment_mode = request.form.get("payment_mode", "Cash")
-    paid_amount = safe_float(request.form.get("paid_amount"))
-    mixed_cash = safe_float(request.form.get("mixed_cash_amount"))
-    mixed_upi = safe_float(request.form.get("mixed_upi_amount"))
-    mixed_card = safe_float(request.form.get("mixed_card_amount"))
+    paid_amount = round(safe_float(request.form.get("paid_amount")), 2)
+    mixed_cash = round(safe_float(request.form.get("mixed_cash_amount")), 2)
+    mixed_upi = round(safe_float(request.form.get("mixed_upi_amount")), 2)
+    mixed_card = round(safe_float(request.form.get("mixed_card_amount")), 2)
 
     prepared_items, subtotal, discount_amount, total_amount, gross_profit, cart_error = _prepare_bill_items(merchant.id, cart)
     if cart_error:
@@ -183,10 +214,16 @@ def create_bill():
         flash("Total amount cannot be less than zero.", "error")
         return redirect(url_for("billing.billing"))
 
+    settlement_modes = ["Cash", "UPI", "Card"]
     if payment_mode == "Udhar":
         paid_amount = 0
-    elif paid_amount <= 0 and payment_mode in ["Cash", "UPI", "Card"]:
+    elif paid_amount <= 0 and payment_mode in settlement_modes:
         paid_amount = total_amount
+    elif payment_mode in settlement_modes and paid_amount < total_amount:
+        accepted_discount = round(total_amount - paid_amount, 2)
+        gross_profit = _apply_settlement_discount(prepared_items, accepted_discount)
+        discount_amount = round(discount_amount + accepted_discount, 2)
+        total_amount = round(paid_amount, 2)
 
     if paid_amount > total_amount:
         flash("Paid amount cannot exceed total amount.", "error")
@@ -287,7 +324,7 @@ def create_bill():
 
 
 @billing_bp.route("/receipt/<int:bill_id>")
-@login_required
+@billing_allowed
 def receipt(bill_id):
     merchant = current_merchant()
     bill = Bill.query.filter_by(id=bill_id, merchant_id=merchant.id).first_or_404()

@@ -15,6 +15,7 @@
   const previewDefaultUnit = document.getElementById("previewDefaultUnit");
   const previewFinalUnit = document.getElementById("previewFinalUnit");
   const previewDiscountUnit = document.getElementById("previewDiscountUnit");
+  const previewDiscountPercent = document.getElementById("previewDiscountPercent");
   const previewLineTotal = document.getElementById("previewLineTotal");
   const itemPricingError = document.getElementById("itemPricingError");
   const itemPricingWarning = document.getElementById("itemPricingWarning");
@@ -26,6 +27,8 @@
   const cartData = document.getElementById("cartData");
   const subtotalAmount = document.getElementById("subtotalAmount");
   const discountAmount = document.getElementById("discountAmount");
+  const settlementDiscountRow = document.getElementById("settlementDiscountRow");
+  const settlementDiscountAmount = document.getElementById("settlementDiscountAmount");
   const billTotal = document.getElementById("billTotal");
   const paymentMode = document.getElementById("paymentMode");
   const paidAmount = document.getElementById("paidAmount");
@@ -37,11 +40,14 @@
   const previewItems = document.getElementById("previewItems");
   const previewSubtotal = document.getElementById("previewSubtotal");
   const previewDiscount = document.getElementById("previewDiscount");
+  const previewSettlementRow = document.getElementById("previewSettlementRow");
+  const previewSettlementDiscount = document.getElementById("previewSettlementDiscount");
   const previewTotal = document.getElementById("previewTotal");
   const previewPaid = document.getElementById("previewPaid");
   const previewPending = document.getElementById("previewPending");
   const cart = [];
   let paidAuto = true;
+  let syncingFinalPrice = false;
 
   function money(value) {
     return `₹${Number(value || 0).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -156,6 +162,7 @@
     const lineSubtotal = round2(defaultPrice * quantity);
     const lineTotal = round2(finalUnitPrice * quantity);
     const discountAmount = round2(lineSubtotal - lineTotal);
+    const discountPercent = defaultPrice > 0 ? round2((Math.max(defaultPrice - finalUnitPrice, 0) / defaultPrice) * 100) : 0;
 
     return {
       defaultPrice: round2(defaultPrice),
@@ -165,6 +172,7 @@
       lineSubtotal,
       lineTotal,
       discountAmount: Math.max(discountAmount, 0),
+      discountPercent,
       error,
     };
   }
@@ -185,10 +193,28 @@
   function updateDiscountControls() {
     const type = itemDiscountType.value;
     itemDiscountValueWrap.classList.toggle("hidden", !["flat", "percent"].includes(type));
-    customFinalPriceWrap.classList.toggle("hidden", type !== "custom_price");
+    customFinalPriceWrap.classList.remove("hidden");
     if (type === "flat") itemDiscountValueWrap.firstChild.textContent = "Discount per item";
     if (type === "percent") itemDiscountValueWrap.firstChild.textContent = "Discount %";
     if (type === "custom_price" && !customFinalPrice.value) customFinalPrice.value = itemPrice.value || "0.00";
+  }
+
+  function syncFinalPriceFromDiscount() {
+    if (itemDiscountType.value === "custom_price") return;
+    const product = selectedProduct();
+    const defaultPrice = Number(product?.selling_price || itemPrice.value || 0);
+    const quantity = Math.max(1, Number(itemQty.value || 1));
+    const pricing = calculateItemPricing(defaultPrice, quantity, itemDiscountType.value, itemDiscountValue.value, customFinalPrice.value);
+    syncingFinalPrice = true;
+    customFinalPrice.value = pricing.finalUnitPrice.toFixed(2);
+    syncingFinalPrice = false;
+  }
+
+  function useReverseFinalPrice() {
+    if (syncingFinalPrice) return;
+    itemDiscountType.value = "custom_price";
+    itemDiscountValue.value = "0";
+    updateItemPricingPreview();
   }
 
   function updateItemPricingPreview() {
@@ -207,6 +233,7 @@
     previewDefaultUnit.textContent = money(pricing.defaultPrice);
     previewFinalUnit.textContent = money(pricing.finalUnitPrice);
     previewDiscountUnit.textContent = money(pricing.discountPerUnit);
+    previewDiscountPercent.textContent = `${pricing.discountPercent.toFixed(2)}%`;
     previewLineTotal.textContent = money(pricing.lineTotal);
     itemPricingError.textContent = pricing.error;
     itemPricingError.classList.toggle("hidden", !pricing.error);
@@ -230,6 +257,7 @@
       customFinalPrice.value = Number(product.selling_price).toFixed(2);
     }
     populateSizes();
+    syncFinalPriceFromDiscount();
     updateItemPricingPreview();
   }
 
@@ -264,6 +292,20 @@
     return round2(cart.reduce((sum, item) => sum + item.lineTotal, 0));
   }
 
+  function isSettlementPaymentMode() {
+    return ["Cash", "UPI", "Card"].includes(paymentMode.value);
+  }
+
+  function calculateAcceptedDiscount(baseTotal) {
+    const paid = Number(paidAmount.value || 0);
+    if (!isSettlementPaymentMode() || paidAuto || paid <= 0 || paid >= baseTotal) return 0;
+    return round2(baseTotal - paid);
+  }
+
+  function calculatePayableTotal(baseTotal = calculateTotalAmount()) {
+    return round2(baseTotal - calculateAcceptedDiscount(baseTotal));
+  }
+
   function updateGenerateButtonState() {
     if (!generateBillBtn) return;
 
@@ -279,33 +321,41 @@
 
   function updatePaymentSummary() {
     const subtotal = calculateCartSubtotal();
-    const discount = calculateDiscountAmount();
-    const total = calculateTotalAmount();
+    const itemDiscount = calculateDiscountAmount();
+    const itemTotal = calculateTotalAmount();
 
     subtotalAmount.textContent = money(subtotal);
-    discountAmount.textContent = money(discount);
-    billTotal.textContent = money(total);
+    discountAmount.textContent = money(itemDiscount);
 
     if (paymentMode.value === "Udhar") {
       paidAmount.value = "0.00";
       paidAuto = true;
-    } else if (["Cash", "UPI", "Card"].includes(paymentMode.value) && paidAuto) {
-      paidAmount.value = total.toFixed(2);
+    } else if (isSettlementPaymentMode() && paidAuto) {
+      paidAmount.value = itemTotal.toFixed(2);
     }
 
+    const acceptedDiscount = calculateAcceptedDiscount(itemTotal);
+    const total = round2(itemTotal - acceptedDiscount);
     const paid = Number(paidAmount.value || 0);
-    const pending = Math.max(round2(total - paid), 0);
+    const pending = isSettlementPaymentMode() ? 0 : Math.max(round2(total - paid), 0);
+
+    if (settlementDiscountRow && settlementDiscountAmount) {
+      settlementDiscountRow.classList.toggle("hidden", acceptedDiscount <= 0);
+      settlementDiscountAmount.textContent = money(acceptedDiscount);
+    }
+
+    billTotal.textContent = money(total);
     paidSummary.textContent = money(paid);
     pendingAmount.textContent = money(pending);
     customerBox.classList.toggle("hidden", !(pending > 0 || paymentMode.value === "Udhar"));
     mixedFields.classList.toggle("hidden", paymentMode.value !== "Mixed");
 
-    updateReceiptPreview(subtotal, discount, total, paid, pending);
+    updateReceiptPreview(subtotal, itemDiscount, total, paid, pending, acceptedDiscount);
     updateVariantInfo();
     updateGenerateButtonState();
   }
 
-  function updateReceiptPreview(subtotal, discount, total, paid, pending) {
+  function updateReceiptPreview(subtotal, discount, total, paid, pending, acceptedDiscount = 0) {
     if (!cart.length) {
       previewItems.innerHTML = `<p class="muted center-text">Cart items will appear here.</p>`;
     } else {
@@ -319,6 +369,10 @@
     }
     previewSubtotal.textContent = money(subtotal);
     previewDiscount.textContent = money(discount);
+    if (previewSettlementRow && previewSettlementDiscount) {
+      previewSettlementRow.classList.toggle("hidden", acceptedDiscount <= 0);
+      previewSettlementDiscount.textContent = `-${money(acceptedDiscount)}`;
+    }
     previewTotal.textContent = money(total);
     previewPaid.textContent = money(paid);
     previewPending.textContent = money(pending);
@@ -332,8 +386,11 @@
     }
 
     cartBody.innerHTML = cart.map((item, index) => {
+      const effectivePercent = item.defaultSellingPrice > 0
+        ? round2((item.discountPerUnit / item.defaultSellingPrice) * 100)
+        : 0;
       const discountLabel = item.discountAmount > 0
-        ? `${item.discountType === "percent" ? `${item.discountValue}% / ` : ""}${money(item.discountAmount)}`
+        ? `${effectivePercent.toFixed(2)}% / ${money(item.discountAmount)}`
         : "No discount";
       return `
         <tr>
@@ -484,9 +541,15 @@
   colourSelect.addEventListener("change", populateSizes);
   sizeSelect.addEventListener("change", updateVariantInfo);
   itemQty.addEventListener("input", updateItemPricingPreview);
-  itemDiscountType.addEventListener("change", updateItemPricingPreview);
-  itemDiscountValue.addEventListener("input", updateItemPricingPreview);
-  customFinalPrice.addEventListener("input", updateItemPricingPreview);
+  itemDiscountType.addEventListener("change", () => {
+    syncFinalPriceFromDiscount();
+    updateItemPricingPreview();
+  });
+  itemDiscountValue.addEventListener("input", () => {
+    syncFinalPriceFromDiscount();
+    updateItemPricingPreview();
+  });
+  customFinalPrice.addEventListener("input", useReverseFinalPrice);
   paymentMode.addEventListener("change", () => {
     paidAuto = ["Cash", "UPI", "Card", "Udhar"].includes(paymentMode.value);
     if (!paidAuto && !paidAmount.value) paidAmount.value = "0.00";
@@ -505,7 +568,8 @@
       return;
     }
 
-    const total = calculateTotalAmount();
+    const baseTotal = calculateTotalAmount();
+    const total = calculatePayableTotal(baseTotal);
     const paid = Number(paidAmount.value || 0);
     if (paid > total) {
       event.preventDefault();
@@ -524,7 +588,7 @@
       }
     }
 
-    const pending = round2(total - paid);
+    const pending = isSettlementPaymentMode() ? 0 : round2(total - paid);
     if (pending > 0 || paymentMode.value === "Udhar") {
       const existing = billForm.customer_id.value;
       const name = billForm.customer_name.value.trim();

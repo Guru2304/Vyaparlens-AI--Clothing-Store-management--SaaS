@@ -1,15 +1,15 @@
-from flask import Blueprint, flash, redirect, render_template, request, url_for
+from flask import Blueprint, flash, redirect, render_template, request, session, url_for
 
 from . import db
-from .helpers import current_merchant, login_required, safe_int
+from .helpers import current_merchant, owner_required, safe_int
 from .models import Product, Variant
 
 
 inventory_bp = Blueprint("inventory", __name__, url_prefix="/inventory")
 
 
-@inventory_bp.route("/")
-@login_required
+@inventory_bp.route("/", strict_slashes=False)
+@owner_required
 def inventory():
     merchant = current_merchant()
     products = Product.query.filter_by(merchant_id=merchant.id).order_by(Product.product_name.asc()).all()
@@ -22,11 +22,12 @@ def inventory():
         products=products,
         categories=categories,
         brands=brands,
+        sensitive_unlocked=bool(session.get("sensitive_unlocked")),
     )
 
 
 @inventory_bp.route("/stock", methods=["POST"])
-@login_required
+@owner_required
 def update_stock():
     merchant = current_merchant()
     variant_id = safe_int(request.form.get("variant_id"))

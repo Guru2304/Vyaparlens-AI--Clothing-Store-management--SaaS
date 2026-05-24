@@ -22,11 +22,12 @@ def create_app():
 
     db.init_app(app)
 
-    from .helpers import display_product_name, format_currency, money
+    from .helpers import display_product_name, format_currency, is_owner, money
 
     app.jinja_env.filters["money"] = money
     app.jinja_env.filters["currency"] = format_currency
     app.jinja_env.globals["display_product_name"] = display_product_name
+    app.jinja_env.globals["is_owner"] = is_owner
 
     from .auth_routes import auth_bp
     from .billing_routes import billing_bp

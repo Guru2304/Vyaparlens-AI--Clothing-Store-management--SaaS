@@ -7,10 +7,12 @@
     <h2>Create a bill in seconds</h2>
     <p>Pick variant, review cart, apply discount and collect payment.</p>
   </div>
-  <div class="hero-actions">
-    <a class="btn btn-ghost" href="{{ url_for('inventory.inventory') }}">Inventory</a>
-    <a class="btn btn-secondary" href="{{ url_for('udhar.udhar') }}">Udhar</a>
-  </div>
+  {% if is_owner() %}
+    <div class="hero-actions">
+      <a class="btn btn-ghost" href="{{ url_for('inventory.inventory') }}">Inventory</a>
+      <a class="btn btn-secondary" href="{{ url_for('udhar.udhar') }}">Udhar</a>
+    </div>
+  {% endif %}
 </section>
 
 <section class="billing-layout premium-billing">
@@ -65,7 +67,7 @@
             <label id="itemDiscountValueWrap">Discount value
               <input id="itemDiscountValue" type="number" min="0" step="0.01" value="0">
             </label>
-            <label id="customFinalPriceWrap" class="hidden">Final price per item
+            <label id="customFinalPriceWrap">Final price per item
               <input id="customFinalPrice" type="number" min="0" step="0.01">
             </label>
           </div>
@@ -73,6 +75,7 @@
             <span>Default Unit <strong id="previewDefaultUnit">₹0.00</strong></span>
             <span>Final Unit <strong id="previewFinalUnit">₹0.00</strong></span>
             <span>Discount / Item <strong id="previewDiscountUnit">₹0.00</strong></span>
+            <span>Effective Discount <strong id="previewDiscountPercent">0%</strong></span>
             <span>Line Total <strong id="previewLineTotal">₹0.00</strong></span>
           </div>
           <div class="form-error hidden" id="itemPricingError"></div>
@@ -122,6 +125,7 @@
         <div class="summary-card">
           <div class="summary-row"><span>Subtotal</span><strong id="subtotalAmount">Rs. 0.00</strong></div>
           <div class="summary-row"><span>Item Discount</span><strong id="discountAmount">Rs. 0.00</strong></div>
+          <div class="summary-row hidden" id="settlementDiscountRow"><span>Accepted Discount</span><strong id="settlementDiscountAmount">Rs. 0.00</strong></div>
           <div class="summary-row total"><span>Total Amount</span><strong id="billTotal">Rs. 0.00</strong></div>
         </div>
 
@@ -164,7 +168,9 @@
             <select name="customer_id">
               <option value="">New customer</option>
               {% for customer in customers %}
-                <option value="{{ customer.id }}">{{ customer.name }} - {{ customer.mobile }} (Pending {{ customer.pending_amount|money }})</option>
+                <option value="{{ customer.id }}">
+                  {{ customer.name }} - {{ customer.mobile }}{% if is_owner() %} (Pending {{ customer.pending_amount|money }}){% endif %}
+                </option>
               {% endfor %}
             </select>
           </label>
@@ -211,7 +217,8 @@
         </div>
         <hr>
         <div class="receipt-line"><span>Subtotal</span><span id="previewSubtotal">Rs. 0.00</span></div>
-        <div class="receipt-line"><span>Discount</span><span id="previewDiscount">Rs. 0.00</span></div>
+        <div class="receipt-line"><span>Item Discount</span><span id="previewDiscount">Rs. 0.00</span></div>
+        <div class="receipt-line hidden" id="previewSettlementRow"><span>Accepted Discount</span><span id="previewSettlementDiscount">Rs. 0.00</span></div>
         <div class="receipt-line total"><span>Total</span><strong id="previewTotal">Rs. 0.00</strong></div>
         <div class="receipt-line"><span>Paid</span><span id="previewPaid">Rs. 0.00</span></div>
         <div class="receipt-line"><span>Pending</span><span id="previewPending">Rs. 0.00</span></div>
